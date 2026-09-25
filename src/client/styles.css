@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@source "../../node_modules/streamdown/dist/*.js";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens. One neutral ramp (Vercel / Geist-style grays), one accent,
+ * three status colors. Every component reads these — never raw hex in JSX.
+ */
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 22px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-brand: var(--brand);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+  --shadow-float: var(--shadow-float);
+  --color-input: var(--border-strong);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar-accent: var(--accent);
+  --color-sidebar-border: var(--border);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+}
+
+:root {
+  color-scheme: light;
+  --background: #ffffff; /* app canvas */
+  --sidebar: #fafafa; /* rails */
+  --card: #ffffff; /* raised surfaces */
+  --popover: #ffffff;
+  --muted: #f4f4f4; /* fills, user bubble */
+  --accent: #efefef; /* hover */
+  --secondary: #efefef;
+  --border: #ebebeb; /* hairlines */
+  --border-strong: #dedede; /* inputs, focusable */
+  --border-focus: #c4c4c4;
+  --foreground: #0a0a0a;
+  --muted-foreground: #666666;
+  --subtle: #a1a1a1;
+  --primary: #0a0a0a; /* primary button = black */
+  --primary-foreground: #ffffff;
+  --brand: #f38020; /* Cloudflare orange, used sparingly */
+  --success: #0c9d61;
+  --warning: #c47a08;
+  --destructive: #e5484d;
+  --ring: rgb(10 10 10 / 0.15);
+  --shadow-float: 0 12px 40px -12px rgb(0 0 0 / 0.14), 0 2px 6px -2px rgb(0 0 0 / 0.05);
+  --glow: rgb(64 120 255 / 0.08);
+  --scrollbar: #dcdcdc;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --sidebar: #070707;
+  --card: #111111;
+  --popover: #141414;
+  --muted: #161616;
+  --accent: #1c1c1c;
+  --secondary: #1c1c1c;
+  --border: #1f1f1f;
+  --border-strong: #2a2a2a;
+  --border-focus: #3a3a3a;
+  --foreground: #ededed;
+  --muted-foreground: #8f8f8f;
+  --subtle: #5f5f5f;
+  --primary: #ededed; /* primary button = white */
+  --primary-foreground: #0a0a0a;
+  --brand: #f38020;
+  --success: #3ecf8e;
+  --warning: #f5a524;
+  --destructive: #ff5f57;
+  --ring: rgb(237 237 237 / 0.25);
+  --shadow-float: 0 16px 48px -12px rgb(0 0 0 / 0.7);
+  --glow: rgb(64 120 255 / 0.12);
+  --scrollbar: #232323;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.011em;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--foreground) 16%, transparent);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* Markdown inside assistant messages */
+  .prose-chat {
+    @apply text-base text-foreground/90;
+  }
+  .prose-chat :where(strong) {
+    @apply font-semibold text-foreground;
+  }
+  .prose-chat :where(a) {
+    @apply text-foreground underline decoration-subtle underline-offset-2 hover:decoration-foreground;
+  }
+  .prose-chat :where(code:not(pre code)) {
+    @apply rounded-sm bg-muted px-1 py-0.5 font-mono text-[12.5px];
+  }
+  .prose-chat :where(h1, h2, h3) {
+    @apply mt-4 mb-2 font-semibold tracking-tight text-foreground;
+  }
+  .prose-chat :where(ul, ol) {
+    @apply my-2 space-y-1 pl-5;
+  }
+  .prose-chat :where(li)::marker {
+    @apply text-subtle;
+  }
+
+  /* The soft glow behind the composer (Profound-style). */
+  .composer-glow {
+    background: radial-gradient(60% 120% at 50% 100%, var(--glow), transparent 70%);
+  }
+}

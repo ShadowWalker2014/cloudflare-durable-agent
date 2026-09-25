@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cloudflare-durable-agent",
+  "main": "src/server/index.ts",
+  "compatibility_date": "2026-06-11",
+  // nodejs_compat also fills process.env from vars/secrets, so the AI SDK's
+  // gateway() finds AI_GATEWAY_API_KEY without any wiring.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/agents/*", "/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      // One ChatAgent per conversation thread.
+      { "name": "ChatAgent", "class_name": "ChatAgent" },
+      // One ThreadIndex per user: the thread list + branch tree.
+      { "name": "ThreadIndex", "class_name": "ThreadIndex" }
+      // Researcher is a sub-agent (facet) of ChatAgent: no binding needed.
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatAgent", "ThreadIndex"] }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "durable-agent-files" }],
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}

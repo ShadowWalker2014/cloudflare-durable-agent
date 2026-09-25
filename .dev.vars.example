@@ -1,0 +1,2 @@
+# Copy to .dev.vars for local dev. In production: wrangler secret put AI_GATEWAY_API_KEY
+AI_GATEWAY_API_KEY=your-vercel-ai-gateway-key

@@ -1,0 +1,15 @@
+{
+  "extends": "agents/tsconfig",
+  "compilerOptions": {
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "env.d.ts",
+    "vite.config.ts"
+  ]
+}
