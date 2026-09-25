@@ -4,7 +4,7 @@
 
 A complete, tested reference app plus a step-by-step playbook. Every agent is a **Durable Object**, models run through the **Vercel AI Gateway** (`gateway()` from the AI SDK), the UI is **AI Elements**, and the whole thing deploys as **one Worker**.
 
-**[Try the live demo →](https://cloudflare-durable-agent.kai-96c.workers.dev)** · [Watch the 1:47 video](docs/demo.mp4) · [See it work](#see-it-work)
+**[Try the live demo →](https://durable-agent.lab.blink.new)** · [Watch the 1:47 video](docs/demo.mp4) · [See it work](#see-it-work)
 
 [![Long-running AI agents on Cloudflare — watch the demo](docs/cover.png)](docs/demo.mp4)
 
@@ -127,7 +127,7 @@ bun run deploy                              # vite build + wrangler deploy
 bunx wrangler secret put AI_GATEWAY_API_KEY
 ```
 
-That's the whole deploy: one Worker serves the UI, the agents' WebSockets and the file API, and prints a `*.workers.dev` URL. Durable Object classes are created from the `migrations` in `wrangler.jsonc`; nothing else to provision.
+That's the whole deploy: one Worker serves the UI, the agents' WebSockets and the file API, and prints a `*.workers.dev` URL. To serve it on your own domain (the zone must be on the same Cloudflare account), add `--domain agent.example.com` to `wrangler deploy`. Durable Object classes are created from the `migrations` in `wrangler.jsonc`; nothing else to provision.
 
 **Public demos are rate-limited.** `DEMO_RATE_LIMIT` (in `wrangler.jsonc`) caps each visitor IP at 20 messages a minute and 50 every 5 hours, tracked by one small `RateLimiter` Durable Object per IP (`src/server/rate-limit.ts`). Only messages a person sends count; sub-agent runs and background tasks don't. It is off locally via `.dev.vars`. Each browser also gets its own anonymous workspace, so visitors never see each other's chats.
 

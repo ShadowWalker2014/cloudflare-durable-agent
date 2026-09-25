@@ -6,6 +6,9 @@
   // nodejs_compat also fills process.env from vars/secrets, so the AI SDK's
   // gateway() finds AI_GATEWAY_API_KEY without any wiring.
   "compatibility_flags": ["nodejs_compat"],
+  // Serve on <name>.<subdomain>.workers.dev. Add a custom domain at deploy time with
+  // `wrangler deploy --domain your.domain` (the zone must be on the same account).
+  "workers_dev": true,
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/agents/*", "/api/*"]
