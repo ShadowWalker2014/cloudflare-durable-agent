@@ -4,9 +4,11 @@
 
 A complete, tested reference app plus a step-by-step playbook. Every agent is a **Durable Object**, models run through the **Vercel AI Gateway** (`gateway()` from the AI SDK), the UI is **AI Elements**, and the whole thing deploys as **one Worker**.
 
-**[Try the live demo →](https://durable-agent.lab.blink.new)** · [Watch the 1:47 video](docs/demo.mp4) · [See it work](#see-it-work)
+**[Try the live demo →](https://durable-agent.lab.blink.new)** · [Watch the 1:47 video](#watch-the-video) · [See it work](#see-it-work)
 
-[![Long-running AI agents on Cloudflare — watch the demo](docs/cover.png)](docs/demo.mp4)
+### Watch the video
+
+https://github.com/user-attachments/assets/81627d33-e729-4444-ae9c-4efc767220a8
 
 ## The problem: agents outlive requests
 
