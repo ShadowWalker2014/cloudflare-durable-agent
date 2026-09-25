@@ -15,11 +15,18 @@
       // One ChatAgent per conversation thread.
       { "name": "ChatAgent", "class_name": "ChatAgent" },
       // One ThreadIndex per user: the thread list + branch tree.
-      { "name": "ThreadIndex", "class_name": "ThreadIndex" }
-      // Researcher is a sub-agent (facet) of ChatAgent: no binding needed.
+      { "name": "ThreadIndex", "class_name": "ThreadIndex" },
+      // One RateLimiter per visitor IP: the public demo's message limits.
+      { "name": "RATE_LIMITER", "class_name": "RateLimiter" }
+      // SubAgent is a sub-agent (facet) of ChatAgent: no binding needed.
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatAgent", "ThreadIndex"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ChatAgent", "ThreadIndex"] },
+    { "tag": "v2", "new_sqlite_classes": ["RateLimiter"] }
+  ],
+  // Public-demo limits (src/server/rate-limit.ts). Set to "false" in .dev.vars for local work.
+  "vars": { "DEMO_RATE_LIMIT": "true" },
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "durable-agent-files" }],
   "observability": { "enabled": true, "head_sampling_rate": 1 }
 }

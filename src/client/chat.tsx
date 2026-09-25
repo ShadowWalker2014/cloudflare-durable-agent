@@ -185,7 +185,7 @@ export function Chat({ thread, session, onBranch, onNavigate }: Props) {
                 >
                   <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive" />
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-foreground">The model call failed</div>
+                    <div className="font-medium text-foreground">{error.message.startsWith("This public demo allows") ? "Rate limit reached" : "The model call failed"}</div>
                     <div className="mt-0.5 font-mono text-xs break-words text-muted-foreground">{error.message}</div>
                   </div>
                   <Button size="sm" onClick={retry} data-testid="retry" className="h-8 rounded-lg">

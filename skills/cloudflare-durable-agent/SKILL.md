@@ -279,6 +279,9 @@ never from the client.
 - Write to the transcript from background work only after `await this.waitUntilStable({ timeout })`.
 - AI Elements `PromptInput` calls `form.reset()` on submit unless wrapped in `PromptInputProvider`; the reset also snaps a Radix `Select` in the form (model picker) back to its first option. Wrap the composer in the provider.
 - Autoscroll a log pane by setting its `scrollTop`; `scrollIntoView` also scrolls every scrollable ancestor (sidebar, page).
+- **Throwing inside `onChatMessage` leaves the browser stuck on "Thinking…"** — no terminal frame is sent. To refuse a turn (rate limit, auth), return `createUIMessageStreamResponse({ stream: createUIMessageStream({ execute: ({ writer }) => writer.write({ type: "error", errorText }) }) })`; the client shows it like any model error.
+- **`stub.destroy()` over RPC resets the callee Durable Object on Cloudflare and breaks the call** (works locally). Update your own state first, then `await stub.destroy().catch(...)`.
+- Public deploy: rate-limit per visitor IP with one tiny Durable Object per IP (`src/server/rate-limit.ts`); read the IP from `cf-connecting-ip` in `onConnect`, keep it in `connection.setState`, and count only turns that have a connection (`getCurrentAgent().connection`) so sub-agent runs, recovery and tasks are free. Give each browser its own anonymous workspace id.
 - `chatRecovery` must be a class field or set in the constructor, never in `onStart()`.
 - Vite "504 Outdated Optimize Dep" after adding UI deps → delete `node_modules/.vite` and list heavy deps in `optimizeDeps.include`.
 - `nodejs_compat` + a 2025-04-01+ compatibility date fills `process.env` from vars and secrets, so `gateway()` works without passing the key.

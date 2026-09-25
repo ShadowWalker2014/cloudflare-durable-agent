@@ -1,5 +1,5 @@
 /**
- * Records one crisp clip per feature for the demo video (dark theme, fresh workspace).
+ * Records one crisp clip per feature (light theme by default, SCHEME=dark for dark; fresh workspace).
  *
  *   bun run dev
  *   bun scripts/record-demo.ts [clip-name ...]
@@ -15,7 +15,7 @@ import { type CDPSession, chromium, type Locator, type Page } from "playwright-c
 
 const BASE = process.env.E2E_URL ?? "http://localhost:5173";
 const ROOT = path.resolve(import.meta.dirname, "..");
-const OUT = path.join(ROOT, "recordings");
+const OUT = path.join(ROOT, "recordings", process.env.SCHEME === "dark" ? "dark" : "light");
 const FIXTURES = path.join(ROOT, "scripts/fixtures");
 const USER = `video-${Date.now().toString(36)}`;
 const only = process.argv.slice(2);
@@ -24,7 +24,8 @@ mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({
   executablePath: `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
 });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5, colorScheme: "dark" });
+const SCHEME = process.env.SCHEME === "dark" ? "dark" : "light";
+const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5, colorScheme: SCHEME });
 
 // A drawn cursor + click ripple, since screencasts do not include the OS pointer.
 await context.addInitScript(() => {
@@ -117,13 +118,20 @@ async function type(page: Page, text: string) {
   await page.getByTestId("prompt").pressSequentially(text, { delay: 28 });
   await page.waitForTimeout(250);
   await page.getByTestId("prompt").press("Enter");
+  await page.getByTestId("message-user").filter({ hasText: text.slice(0, 40) }).last().waitFor({ timeout: 30_000 });
 }
 
 const idle = (page: Page, timeout = 180_000) =>
-  page
-    .waitForFunction(() => document.querySelector("[data-testid=send]")?.getAttribute("aria-label") === "Stop", null, { timeout: 30_000 })
-    .catch(() => {})
-    .then(() => page.waitForFunction(() => document.querySelector("[data-testid=send]")?.getAttribute("aria-label") === "Submit", null, { timeout }));
+  page.waitForFunction(
+    () => {
+      const ready = document.querySelector("[data-testid=send]")?.getAttribute("aria-label") === "Submit";
+      const all = document.querySelectorAll("[data-testid^=message-]");
+      const answered = all[all.length - 1]?.getAttribute("data-testid") === "message-assistant" || !!document.querySelector("[data-testid=chat-error]");
+      return ready && answered;
+    },
+    null,
+    { timeout }
+  );
 
 async function newChat(page: Page) {
   const before = page.url();

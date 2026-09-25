@@ -28,6 +28,16 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
 let page = await context.newPage();
 page.on("pageerror", (e) => console.log("  [pageerror]", e.message));
+if (process.env.E2E_TRACE) {
+  const t0 = Date.now();
+  page.on("websocket", (ws) => {
+    const tag = ws.url().split("?")[0].slice(-8);
+    console.log(`  [${((Date.now() - t0) / 1000).toFixed(1)}] ws open ${tag}`);
+    ws.on("close", () => console.log(`  [${((Date.now() - t0) / 1000).toFixed(1)}] ws close ${tag}`));
+    ws.on("framereceived", (f) => { const d = String(f.payload); if (!d.includes("text-delta") && !d.includes("app:log")) console.log(`  [${((Date.now() - t0) / 1000).toFixed(1)}] < ${tag} ${d.slice(0, 160)}`); });
+    ws.on("framesent", (f) => { const d = String(f.payload); if (!d.includes('"rpc"')) console.log(`  [${((Date.now() - t0) / 1000).toFixed(1)}] > ${tag} ${d.slice(0, 90)}`); });
+  });
+}
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,12 +54,23 @@ async function send(text: string, files: string[] = [], p: Page = page) {
   if (files.length) await p.locator('input[type="file"]').setInputFiles(files);
   await p.getByTestId("prompt").fill(text);
   await p.getByTestId("prompt").press("Enter");
+  // Attachments upload before the message appears; wait until it is on screen.
+  await p.getByTestId("message-user").filter({ hasText: text.slice(0, 40) }).last().waitFor({ timeout: 30_000 });
 }
 
 async function waitIdle(p: Page = page, timeout = 120_000) {
-  // Busy first (Stop button), then idle again (Submit button).
-  await p.waitForFunction(() => document.querySelector("[data-testid=send]")?.getAttribute("aria-label") === "Stop", null, { timeout: 30_000 }).catch(() => {});
-  await p.waitForFunction(() => document.querySelector("[data-testid=send]")?.getAttribute("aria-label") === "Submit", null, { timeout });
+  // Idle = the send button is back AND the newest message is a reply (or an error card).
+  // The button alone can flicker to Submit right after a send, before the reply starts.
+  await p.waitForFunction(
+    () => {
+      const idle = document.querySelector("[data-testid=send]")?.getAttribute("aria-label") === "Submit";
+      const all = document.querySelectorAll("[data-testid^=message-]");
+      const answered = all[all.length - 1]?.getAttribute("data-testid") === "message-assistant" || !!document.querySelector("[data-testid=chat-error]");
+      return idle && answered;
+    },
+    null,
+    { timeout }
+  );
 }
 
 const lastAssistant = (p: Page = page) =>
@@ -73,7 +94,7 @@ async function check(name: string, fn: () => Promise<string>) {
   } catch (error) {
     const detail = error instanceof Error ? error.message.split("\n")[0] : String(error);
     results.push({ name, ok: false, detail });
-    console.log(`FAIL ${detail}`);
+    console.log(`FAIL (${((Date.now() - t) / 1000).toFixed(1)}s) ${detail}`);
     await shot(`FAIL-${name.replace(/\W+/g, "-")}`).catch(() => {});
   }
 }
@@ -296,7 +317,7 @@ await check("Fork a chat", async () => {
   await send("Give the story a one-line happy ending.");
   await waitIdle();
   await shot("10-branch");
-  return ""(Forked)" chat with 2 copied messages, continues independently";
+  return `"(Forked)" chat with 2 copied messages, continues independently`;
 });
 
 await check("Model picker", async () => {

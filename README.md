@@ -4,9 +4,9 @@
 
 A complete, tested reference app plus a step-by-step playbook. Every agent is a **Durable Object**, models run through the **Vercel AI Gateway** (`gateway()` from the AI SDK), the UI is **AI Elements**, and the whole thing deploys as **one Worker**.
 
-[![Watch the 107-second demo](docs/cover.png)](docs/demo.mp4)
+**[Try the live demo →](https://cloudflare-durable-agent.kai-96c.workers.dev)** · [Watch the 1:47 video](docs/demo.mp4) · [See it work](#see-it-work)
 
-▶ **[Watch the demo (1:47)](docs/demo.mp4)**, recorded from this repo running locally.
+[![Long-running AI agents on Cloudflare — watch the demo](docs/cover.png)](docs/demo.mp4)
 
 ## The problem: agents outlive requests
 
@@ -53,11 +53,39 @@ Each feature is checked end to end by `bun run e2e` (19 checks, real browser, re
 | **Multi-model** | Claude, GPT and Gemini through one AI Gateway key |
 | **Light + dark** | System, light and dark themes |
 
+## See it work
+
+Recorded from this repo; each clip is sped up to fit.
+
+**Sub-agents run in parallel**, each in its own Durable Object, and stream their tool calls into the parent chat.
+
+![Two researcher sub-agents running in parallel](docs/media/subagents.webp)
+
+**Every sub-agent is a real session.** Open it from the sidebar, read its transcript and tool calls, and keep talking to it.
+
+![Opening a sub-agent session and messaging it directly](docs/media/session.webp)
+
+**Risky actions wait for a person.** The turn pauses on an approval card and continues once you answer.
+
+![Approving an email before the agent sends it](docs/media/approval.webp)
+
+**Refresh mid-answer and the stream picks up where it was.**
+
+![Reloading the page while an answer streams; it resumes](docs/media/resume.webp)
+
+**Long jobs keep running with the tab closed.** A durable task writes the report step by step and posts it when done.
+
+![Starting a background report, closing the tab, and coming back to the finished report](docs/media/background-task.webp)
+
+**Fork any chat from any message.** The copy opens as a new chat, titled `<name> (Forked)`.
+
+![Forking a chat and continuing it separately](docs/media/fork.webp)
+
+**Images and files** go to R2 and the model reads them. **Model errors** show in the chat with a one-click Retry.
+
 <p>
-  <img src="docs/screenshots/readme-subagents.png" width="49%" alt="Two researcher sub-agents running in parallel, each in its own Cloudflare Durable Object">
-  <img src="docs/screenshots/readme-session.png" width="49%" alt="A sub-agent session opened from the sidebar: its transcript, tool calls and logs">
-  <img src="docs/screenshots/readme-approval.png" width="49%" alt="Human-in-the-loop approval card before the agent sends an email">
-  <img src="docs/screenshots/readme-fork.png" width="49%" alt="A forked chat listed as a normal chat with a (Forked) suffix">
+  <img src="docs/media/attachments.webp" width="49%" alt="Asking about an uploaded chart image">
+  <img src="docs/media/error-retry.webp" width="49%" alt="A failed model call shown in the chat, then retried">
 </p>
 
 ## Architecture
@@ -93,12 +121,15 @@ Get an AI Gateway key at [vercel.com/docs/ai-gateway](https://vercel.com/docs/ai
 ## Deploy to Cloudflare
 
 ```bash
+bunx wrangler login
 bunx wrangler r2 bucket create durable-agent-files
+bun run deploy                              # vite build + wrangler deploy
 bunx wrangler secret put AI_GATEWAY_API_KEY
-bun run deploy
 ```
 
-That's the whole deploy: one Worker serves the UI, the agents' WebSockets and the file API.
+That's the whole deploy: one Worker serves the UI, the agents' WebSockets and the file API, and prints a `*.workers.dev` URL. Durable Object classes are created from the `migrations` in `wrangler.jsonc`; nothing else to provision.
+
+**Public demos are rate-limited.** `DEMO_RATE_LIMIT` (in `wrangler.jsonc`) caps each visitor IP at 20 messages a minute and 50 every 5 hours, tracked by one small `RateLimiter` Durable Object per IP (`src/server/rate-limit.ts`). Only messages a person sends count; sub-agent runs and background tasks don't. It is off locally via `.dev.vars`. Each browser also gets its own anonymous workspace, so visitors never see each other's chats.
 
 ## Test it
 

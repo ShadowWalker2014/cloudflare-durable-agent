@@ -126,6 +126,8 @@ export class SubAgent extends LoggedChatAgent<SubAgentState> {
   }
 
   async onChatMessage(_onFinish: unknown, options?: OnChatMessageOptions) {
+    const limited = await this.rateLimitedResponse();
+    if (limited) return limited;
     const config = SUBAGENT_TYPES[this.state.type] ?? SUBAGENT_TYPES["general-purpose"];
     const tools = Object.fromEntries(config.tools.map((name) => [name, TOOLS[name]]));
     this.log.write("info", "chat", "turn:start", { model: config.model, type: this.state.type });

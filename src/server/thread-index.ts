@@ -50,12 +50,14 @@ export class ThreadIndex extends Agent<Env, ThreadIndexState> {
 
   @callable()
   async deleteThread(id: string) {
-    const chat = await getAgentByName(this.env.ChatAgent, id);
-    await chat.destroy(); // wipes that conversation's Durable Object storage
     this.setState({
       threads: this.state.threads.filter((t) => t.id !== id),
       sessions: (this.state.sessions ?? []).filter((s) => s.threadId !== id)
     });
+    // destroy() wipes that conversation's storage and resets its Durable Object,
+    // which on Cloudflare also breaks this RPC call — so it runs last.
+    const chat = await getAgentByName(this.env.ChatAgent, id);
+    await chat.destroy().catch((error: unknown) => console.error("deleteThread: destroy ended the call", error));
   }
 
   /**

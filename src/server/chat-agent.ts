@@ -68,6 +68,8 @@ export class ChatAgent extends LoggedChatAgent<ChatState> {
   } satisfies TaskHandlers;
 
   async onChatMessage(_onFinish: unknown, options?: OnChatMessageOptions) {
+    const limited = await this.rateLimitedResponse();
+    if (limited) return limited;
     const body = (options?.body ?? {}) as ChatBody;
     const { id: modelId, model } = body.simulateError
       ? { id: BROKEN_MODEL, model: gateway(BROKEN_MODEL) }
@@ -79,9 +81,10 @@ export class ChatAgent extends LoggedChatAgent<ChatState> {
     this.ctx.waitUntil(this.updateThreadIndex(ownerId));
 
     const tools = this.tools();
-    const modelMessages = await convertToModelMessages(await inlineAttachments(this.messages, this.env), {
-      tools
-    });
+    const started = Date.now();
+    const inlined = await inlineAttachments(this.messages, this.env);
+    const modelMessages = await convertToModelMessages(inlined, { tools });
+    this.log.write("info", "chat", "turn:prepared", { ms: Date.now() - started, messages: modelMessages.length });
 
     const result = streamText({
       model,

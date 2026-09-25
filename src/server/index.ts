@@ -3,6 +3,7 @@ import { handleFiles } from "./files";
 
 // Every Durable Object class must be exported from the Worker entry.
 export { ChatAgent } from "./chat-agent";
+export { RateLimiter } from "./rate-limit";
 export { SubAgent } from "./subagent";
 export { ThreadIndex } from "./thread-index";
 

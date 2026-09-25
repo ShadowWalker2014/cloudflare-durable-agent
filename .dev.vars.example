@@ -1,2 +1,5 @@
 # Copy to .dev.vars for local dev. In production: wrangler secret put AI_GATEWAY_API_KEY
 AI_GATEWAY_API_KEY=your-vercel-ai-gateway-key
+
+# The public-demo rate limit (20/min, 50 per 5 h per IP). Off for local development.
+DEMO_RATE_LIMIT=false

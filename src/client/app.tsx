@@ -4,8 +4,24 @@ import type { Session, Thread, ThreadIndexState } from "@/server/thread-index";
 import { Chat } from "./chat";
 import { Sidebar } from "./components/sidebar";
 
-/** Demo only: `?user=` picks a workspace (default "demo"). A real app takes this from its auth session. */
-export const USER_ID = new URL(window.location.href).searchParams.get("user") ?? "demo";
+/**
+ * Demo only: each browser gets its own anonymous workspace (a random id kept in
+ * localStorage); `?user=` picks one explicitly. A real app takes this from its auth session.
+ */
+export const USER_ID = new URL(window.location.href).searchParams.get("user") ?? anonymousId();
+
+function anonymousId() {
+  try {
+    const saved = localStorage.getItem("workspace");
+    if (saved) return saved;
+    const id = crypto.randomUUID();
+    localStorage.setItem("workspace", id);
+    return id;
+  } catch (error) {
+    console.error("localStorage unavailable; using a per-tab workspace", error);
+    return crypto.randomUUID();
+  }
+}
 
 type Route = { threadId: string | null; sessionId: string | null };
 
@@ -40,8 +56,12 @@ export function App() {
   }, []);
 
   const createThread = useCallback(async () => {
-    const thread = await index.call<Thread>("createThread", []);
-    navigate(thread.id);
+    try {
+      const thread = await index.call<Thread>("createThread", []);
+      navigate(thread.id);
+    } catch (error) {
+      console.error("createThread failed", error);
+    }
   }, [index, navigate]);
 
   // First visit: pick the newest thread, or create one.
@@ -68,16 +88,24 @@ export function App() {
   const branch = useCallback(
     async (messageId: string) => {
       if (!route.threadId) return;
-      const thread = await index.call<Thread>("branchThread", [route.threadId, messageId]);
-      navigate(thread.id);
+      try {
+        const thread = await index.call<Thread>("branchThread", [route.threadId, messageId]);
+        navigate(thread.id);
+      } catch (error) {
+        console.error("fork failed", error);
+      }
     },
     [index, route.threadId, navigate]
   );
 
   const remove = useCallback(
     async (id: string) => {
-      await index.call("deleteThread", [id]);
-      if (id === route.threadId) setRoute({ threadId: null, sessionId: null });
+      try {
+        await index.call("deleteThread", [id]);
+        if (id === route.threadId) setRoute({ threadId: null, sessionId: null });
+      } catch (error) {
+        console.error("deleteThread failed", error);
+      }
     },
     [index, route.threadId]
   );
