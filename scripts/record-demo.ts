@@ -264,7 +264,7 @@ const clips: Record<string, () => Promise<void>> = {
     await moveTo(page, msg);
     await page.waitForTimeout(400);
     await click(page, msg.getByTestId("branch"));
-    await page.getByTestId("thread-title").filter({ hasText: "(branch)" }).waitFor();
+    await page.getByTestId("thread-title").filter({ hasText: "(Forked)" }).waitFor();
     mark("branched");
     await page.waitForTimeout(1200);
     await type(page, "Make it one paragraph for executives.");

@@ -119,7 +119,7 @@ export function MessageView({ message, isStreaming, isLast, canRetry, agentTools
               </MessageAction>
             )}
             {onBranch && (
-              <MessageAction tooltip="Branch from here" onClick={onBranch} data-testid="branch">
+              <MessageAction tooltip="Fork into a new chat" onClick={onBranch} data-testid="branch">
                 <GitBranchIcon className="size-3.5" />
               </MessageAction>
             )}

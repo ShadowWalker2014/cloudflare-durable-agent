@@ -101,7 +101,6 @@ export function App() {
           <Chat
             key={`${thread.id}/${session?.runId ?? ""}`}
             thread={thread}
-            parent={threads?.find((t) => t.id === thread.parentId)}
             session={session}
             onBranch={branch}
             onNavigate={navigate}

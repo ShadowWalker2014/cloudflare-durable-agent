@@ -1,6 +1,6 @@
 ---
 name: cloudflare-durable-agent
-description: Build a durable AI agent on Cloudflare — Workers + Durable Objects + Agents SDK (@cloudflare/ai-chat) + AI SDK with Vercel AI Gateway `gateway()` + AI Elements UI. Covers streaming, resumable streams, crash/deploy recovery, tools, human-in-the-loop approvals, sub-agents, durable background tasks (the Cloudflare answer to Vercel Workflow step.do), branching, image/file attachments on R2, error display + retry, per-agent logs, multi-thread chat, deploy. Use when starting or extending any AI agent / chat app hosted on Cloudflare, or when porting a Vercel Workflow / Vercel AI agent to Cloudflare.
+description: Build a durable AI agent on Cloudflare — Workers + Durable Objects + Agents SDK (@cloudflare/ai-chat) + AI SDK with Vercel AI Gateway `gateway()` + AI Elements UI. Covers streaming, resumable streams, crash/deploy recovery, tools, human-in-the-loop approvals, sub-agents, durable background tasks (the Cloudflare answer to Vercel Workflow step.do), forking chats, image/file attachments on R2, error display + retry, per-agent logs, multi-thread chat, deploy. Use when starting or extending any AI agent / chat app hosted on Cloudflare, or when porting a Vercel Workflow / Vercel AI agent to Cloudflare.
 ---
 
 # Durable agents on Cloudflare — the playbook
@@ -11,10 +11,14 @@ pattern below is running code there, checked by `bun run e2e`.
 
 ## When to reach for this
 
-Pick this stack when the app is an **agent that must not lose work**: chats that
-survive a refresh, turns that survive a deploy, jobs that keep running after the
-user closes the tab, and humans approving actions mid-turn. Everything deploys
-as **one Worker** (UI assets + API + agents); nothing else to host.
+Pick this stack when you want **long-running agents on serverless edge
+hosting**. A plain serverless function is stateless and short-lived, so an agent
+built on one needs a database, a queue, a workflow engine and a stream store
+bolted on. Here each agent *is* a Durable Object: a stateful, addressable
+instance with its own SQLite, WebSockets, alarms and a durable step journal.
+Chats survive a refresh, turns survive a deploy, jobs keep running after the tab
+closes, and humans can approve actions mid-run. Everything deploys as **one
+Worker** (UI assets + API + agents); nothing else to host.
 
 ## The shape
 
@@ -28,7 +32,7 @@ Worker  src/server/index.ts
   │     ├─ facet → SubAgent/<runId>   (one per sub-agent run: own transcript, tools, logs;
   │     │                               open it at /agents/chat-agent/<id>/sub/sub-agent/<runId>)
   │     └─ taskDefinitions            (durable background jobs)
-  ├─ /agents/thread-index/<userId>   → ThreadIndex     (1 per user: threads, branch tree, sub-agent sessions)
+  ├─ /agents/thread-index/<userId>   → ThreadIndex     (1 per user: threads, forks, sub-agent sessions)
   ├─ /api/files                      → R2 bucket FILES (attachments)
   └─ static assets (Vite build of the React app)
 
@@ -221,11 +225,11 @@ to external APIs). Push progress to the UI with `this.setState(...)` — `useAge
 `onStateUpdate` receives it live. For cross-service orchestration with a dashboard,
 use Cloudflare Workflows (`this.runWorkflow`) instead.
 
-## Pattern 5 — threads and branching
+## Pattern 5 — threads and forking
 
 - `ThreadIndex extends Agent<Env, { threads }>` keyed by user id; `@callable createThread / renameThread / deleteThread`; its state syncs to every tab.
-- **Branch** = copy history up to a message into a new ChatAgent:
-  `source.exportUntil(messageId)` → `createThread()` → `target.importHistory(msgs)` (which calls `persistMessages`). Store `parentId` for the tree.
+- **Fork** = copy history up to a message into a brand-new ChatAgent, listed like any other chat and titled `<name> (Forked)`:
+  `source.exportUntil(messageId)` → `createThread()` → `target.importHistory(msgs)` (which calls `persistMessages`). Keep `parentId` as metadata only.
 - `deleteThread` calls `chat.destroy()` to wipe that DO's storage.
 - DO-to-DO calls: `const stub = await getAgentByName(this.env.ChatAgent, id); await stub.method()` (any public method, structured-clone args).
 

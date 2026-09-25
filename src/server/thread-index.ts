@@ -5,7 +5,7 @@ export type Thread = {
   title: string;
   createdAt: number;
   updatedAt: number;
-  /** Set when this thread was branched from another one. */
+  /** Set when this thread was forked from another one. */
   parentId?: string;
   branchedFromMessageId?: string;
 };
@@ -26,7 +26,7 @@ export type Session = {
 export type ThreadIndexState = { threads: Thread[]; sessions: Session[] };
 
 /**
- * One ThreadIndex per user: the list of their conversations and the branch
+ * One ThreadIndex per user: the list of their conversations, forks
  * tree. Each conversation is its own ChatAgent Durable Object; this index only
  * keeps metadata, so listing never wakes the chats. The state syncs to every
  * open tab automatically (useAgent → onStateUpdate).
@@ -67,7 +67,8 @@ export class ThreadIndex extends Agent<Env, ThreadIndexState> {
     const source = await getAgentByName(this.env.ChatAgent, sourceId);
     const history = await source.exportUntil(messageId);
     const parent = this.state.threads.find((t) => t.id === sourceId);
-    const thread = this.createThread(`${parent?.title ?? "Chat"} (branch)`);
+    const base = (parent?.title ?? "Chat").replace(/ \(Forked\)$/, "");
+    const thread = this.createThread(`${base} (Forked)`);
     const target = await getAgentByName(this.env.ChatAgent, thread.id);
     await target.importHistory(history);
     this.update(thread.id, { parentId: sourceId, branchedFromMessageId: messageId });

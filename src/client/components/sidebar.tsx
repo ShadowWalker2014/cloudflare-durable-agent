@@ -1,4 +1,4 @@
-import { BotIcon, GitBranchIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { BotIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import type { Session, Thread } from "@/server/thread-index";
@@ -15,19 +15,18 @@ type Props = {
   onDelete: (id: string) => void;
 };
 
-/** Threads as a tree: a branch sits under the thread it was branched from. */
-function toTree(threads: Thread[]) {
-  const ids = new Set(threads.map((t) => t.id));
-  const byUpdated = [...threads].sort((a, b) => b.updatedAt - a.updatedAt);
-  const roots = byUpdated.filter((t) => !t.parentId || !ids.has(t.parentId));
-  const children = (id: string) => byUpdated.filter((t) => t.parentId === id);
-  const flat: { thread: Thread; depth: number }[] = [];
-  const walk = (t: Thread, depth: number) => {
-    flat.push({ thread: t, depth });
-    for (const c of children(t.id)) walk(c, depth + 1);
-  };
-  for (const r of roots) walk(r, 0);
-  return flat;
+
+const FORK_SUFFIX = " (Forked)";
+
+/** The name truncates; a fork's "(Forked)" suffix always stays visible. */
+function ThreadTitle({ title }: { title: string }) {
+  const forked = title.endsWith(FORK_SUFFIX);
+  return (
+    <span className="relative flex min-w-0 flex-1 items-center gap-1 pr-5">
+      <span className="min-w-0 truncate">{forked ? title.slice(0, -FORK_SUFFIX.length) : title}</span>
+      {forked && <span className="shrink-0 text-subtle">(Forked)</span>}
+    </span>
+  );
 }
 
 export function StatusDot({ status }: { status: string }) {
@@ -46,7 +45,8 @@ export function Logo({ className }: { className?: string }) {
 }
 
 export function Sidebar({ threads, sessions, activeThreadId, activeSessionId, onSelect, onCreate, onDelete }: Props) {
-  const rows = toTree(threads);
+  // Newest first. A fork is an ordinary chat; its title carries "(Forked)".
+  const rows = [...threads].sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
     <aside className="flex w-[248px] shrink-0 flex-col border-r bg-sidebar">
@@ -72,7 +72,7 @@ export function Sidebar({ threads, sessions, activeThreadId, activeSessionId, on
 
       <nav className="flex-1 overflow-y-auto px-2.5 pb-3 [overflow-anchor:none]" data-testid="thread-list">
         <AnimatePresence initial={false}>
-          {rows.map(({ thread, depth }) => {
+          {rows.map((thread) => {
             const active = thread.id === activeThreadId && !activeSessionId;
             const ancestor = thread.id === activeThreadId && Boolean(activeSessionId);
             const children = sessions.filter((x) => x.threadId === thread.id).sort((a, b) => a.startedAt - b.startedAt);
@@ -85,11 +85,7 @@ export function Sidebar({ threads, sessions, activeThreadId, activeSessionId, on
                 exit={{ opacity: 0, height: 0 }}
                 transition={spring}
                 className="group relative"
-                style={{ paddingLeft: depth * 16 }}
               >
-                {depth > 0 && (
-                  <span className="absolute top-0 bottom-1/2 w-px bg-border-strong" style={{ left: depth * 16 - 8 }} />
-                )}
                 <button
                   type="button"
                   onClick={() => onSelect(thread.id)}
@@ -103,8 +99,7 @@ export function Sidebar({ threads, sessions, activeThreadId, activeSessionId, on
                   {active && (
                     <motion.span layoutId="thread-active" transition={spring} className="absolute inset-0 rounded-md bg-accent" />
                   )}
-                  {thread.parentId && <GitBranchIcon className="relative size-3.5 shrink-0 text-brand" />}
-                  <span className="relative min-w-0 flex-1 truncate pr-5">{thread.title}</span>
+                  <ThreadTitle title={thread.title} />
                 </button>
                 <button
                   type="button"

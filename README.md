@@ -1,12 +1,42 @@
-# Durable AI agents on Cloudflare — Agents SDK + Durable Objects + Vercel AI Gateway
+# Long-running AI agents on Cloudflare's serverless edge
 
-A complete, working reference for building **durable AI agents on Cloudflare Workers**: a chat agent that keeps working when you refresh, close the tab or redeploy. Every conversation is its own **Durable Object**; models run through the **Vercel AI Gateway** (`gateway()` from the AI SDK); the UI is built with **AI Elements**. The whole app deploys as **one Worker**.
+**Build AI agents that work for minutes or hours on serverless Cloudflare Workers — and never lose their place — without running a server, a queue, a workflow engine or a separate database.**
 
-[![Watch the 100-second demo](docs/cover.png)](docs/demo.mp4)
+A complete, tested reference app plus a step-by-step playbook. Every agent is a **Durable Object**, models run through the **Vercel AI Gateway** (`gateway()` from the AI SDK), the UI is **AI Elements**, and the whole thing deploys as **one Worker**.
 
-▶ **[Watch the demo (1:42)](docs/demo.mp4)**, recorded from this repo running locally.
+[![Watch the 107-second demo](docs/cover.png)](docs/demo.mp4)
 
-It covers the cases every real agent needs, each one checked end to end by `bun run e2e` (19 checks, real browser, real models):
+▶ **[Watch the demo (1:47)](docs/demo.mp4)**, recorded from this repo running locally.
+
+## The problem: agents outlive requests
+
+Serverless edge functions are fast, cheap and global, but they are built for requests that finish in seconds. An AI agent is not a request. It makes dozens of model and tool calls, hands work to sub-agents, waits for a person to approve a step, and can run for minutes or hours. Built on plain serverless functions, it breaks in predictable ways:
+
+- **A refresh or a dropped connection loses the answer** that was still streaming.
+- **A deploy or crash mid-turn throws away the work** already done.
+- **A long job must beat the function timeout**, or be moved to a separate queue and worker.
+- **Waiting for a human means saving state somewhere** and wiring up a way to resume it.
+- **History, stream buffers and job state each need their own store**, so one agent becomes five services.
+
+The usual answer is to bolt on infrastructure: a database for history, Redis for resumable streams, a queue and a workflow engine for long jobs, and a long-lived server for WebSockets.
+
+## The approach: give every agent its own durable home
+
+A Cloudflare Durable Object is a small stateful server on Cloudflare's network: one instance per conversation, addressable by ID, with its **own SQLite database, WebSocket connections, alarms and a durable journal of steps**. It hibernates when idle, so an agent waiting on a person or a timer isn't billed for compute while it waits, and it wakes on the next message, alarm or approval. The [Cloudflare Agents SDK](https://developers.cloudflare.com/agents/) builds the agent patterns on top.
+
+| Problem | How it is solved here |
+| --- | --- |
+| Stream lost on refresh | Every chunk is written to the agent's SQLite; the client resumes exactly where it was |
+| Deploy or crash mid-turn | The turn runs as a durable fiber and resumes after the restart |
+| Jobs longer than a request | Durable tasks: `step.do` checkpoints each step, `step.sleep` waits minutes or days, failed steps retry |
+| Waiting on a human | The turn pauses at an approval; the agent hibernates until the answer arrives |
+| Work that fans out | Sub-agents run as child Durable Objects, in parallel, each with its own transcript |
+| State spread across services | History, streams, logs and job state all live in the agent's own SQLite |
+| Operating it | One Worker, one deploy command; Cloudflare runs the rest |
+
+## What's in the app
+
+Each feature is checked end to end by `bun run e2e` (19 checks, real browser, real models):
 
 | Feature | How it works here |
 | --- | --- |
@@ -16,7 +46,7 @@ It covers the cases every real agent needs, each one checked end to end by `bun 
 | **Resumable streams** | Refresh mid-answer; the stream picks up where it was |
 | **Crash / deploy recovery** | Chat turns run as durable fibers; a restart mid-turn resumes the turn |
 | **Durable background tasks** | `taskDefinitions` with `step.do` / `step.sleep` — the Cloudflare answer to Vercel Workflow. Close the tab; the report still lands |
-| **Branching** | Copy a thread up to any message into a new thread |
+| **Forking** | Copy a chat up to any message into a new chat, listed as `<name> (Forked)` |
 | **Image + file attachments** | Uploaded to **R2**, read by the model (images, PDFs, text) |
 | **Errors + retry** | Model errors surface in the chat with a one-click Retry |
 | **Live logs** | Every turn, step, tool call and SDK event, per agent, streamed to an inspector |
@@ -24,10 +54,10 @@ It covers the cases every real agent needs, each one checked end to end by `bun 
 | **Light + dark** | System, light and dark themes |
 
 <p>
-  <img src="docs/screenshots/03-subagents.png" width="49%" alt="Two researcher sub-agents running in parallel inside a Cloudflare Durable Object chat">
-  <img src="docs/screenshots/04-session.png" width="49%" alt="Opening a sub-agent session to read its tool calls and keep chatting with it">
-  <img src="docs/screenshots/04-approval.png" width="49%" alt="Human-in-the-loop approval card before the agent sends an email">
-  <img src="docs/screenshots/12-dark.png" width="49%" alt="Dark theme with the live logs inspector">
+  <img src="docs/screenshots/readme-subagents.png" width="49%" alt="Two researcher sub-agents running in parallel, each in its own Cloudflare Durable Object">
+  <img src="docs/screenshots/readme-session.png" width="49%" alt="A sub-agent session opened from the sidebar: its transcript, tool calls and logs">
+  <img src="docs/screenshots/readme-approval.png" width="49%" alt="Human-in-the-loop approval card before the agent sends an email">
+  <img src="docs/screenshots/readme-fork.png" width="49%" alt="A forked chat listed as a normal chat with a (Forked) suffix">
 </p>
 
 ## Architecture
@@ -37,14 +67,14 @@ flowchart LR
   B["Browser<br/>React + AI Elements<br/>useAgentChat"] -- WebSocket --> W["Worker<br/>src/server/index.ts"]
   W --> C["ChatAgent<br/>1 Durable Object per chat<br/>SQLite: messages, streams, logs, tasks"]
   C --> S["SubAgent facets<br/>1 child DO per run"]
-  W --> I["ThreadIndex<br/>1 DO per user<br/>threads, branches, sessions"]
+  W --> I["ThreadIndex<br/>1 DO per user<br/>threads, forks, sessions"]
   W --> R2[("R2<br/>attachments")]
   C -- "gateway('anthropic/…')" --> G["Vercel AI Gateway<br/>Anthropic · OpenAI · Google"]
 ```
 
-- `src/server/chat-agent.ts` — the chat agent: tools, approvals, the `agent` tool, durable tasks, branching.
+- `src/server/chat-agent.ts` — the chat agent: tools, approvals, the `agent` tool, durable tasks, forking.
 - `src/server/subagent.ts` — sub-agent types and their tools.
-- `src/server/thread-index.ts` — per-user thread list, branch tree and sub-agent sessions.
+- `src/server/thread-index.ts` — per-user thread list, forks and sub-agent sessions.
 - `src/server/files.ts` — R2 uploads and attachment inlining.
 - `src/client/` — the React app (AI Elements components live in `src/components/ai-elements`).
 

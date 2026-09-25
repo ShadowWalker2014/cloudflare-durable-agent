@@ -1,7 +1,7 @@
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { useAgent, useAgentToolEvents } from "agents/react";
 import type { UIMessage } from "ai";
-import { BotIcon, GitBranchIcon, PanelRightCloseIcon, PanelRightOpenIcon, RotateCcwIcon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { BotIcon, PanelRightCloseIcon, PanelRightOpenIcon, RotateCcwIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ai-elements/conversation";
@@ -22,7 +22,6 @@ import { spring } from "./lib/motion";
 
 type Props = {
   thread: Thread;
-  parent?: Thread;
   /** When set, this view is a sub-agent session inside `thread`. */
   session?: Session;
   onBranch: (messageId: string) => void;
@@ -34,8 +33,7 @@ type Props = {
  * same kind of agent, reached through its parent's URL:
  * /agents/chat-agent/<thread>/sub/sub-agent/<runId>
  */
-export function Chat({ thread, parent, session, onBranch, onNavigate }: Props) {
-  const onSelectThread = (id: string) => onNavigate(id);
+export function Chat({ thread, session, onBranch, onNavigate }: Props) {
   const [model, setModel] = useState<string>(DEFAULT_MODEL);
   const [simulateError, setSimulateError] = useState(false);
   const [reports, setReports] = useState<ReportView[]>([]);
@@ -90,18 +88,6 @@ export function Chat({ thread, parent, session, onBranch, onNavigate }: Props) {
           <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm">
             <span className="text-subtle">Chats</span>
             <span className="text-subtle">/</span>
-            {parent && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onSelectThread(parent.id)}
-                  className="max-w-[180px] truncate text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {parent.title}
-                </button>
-                <GitBranchIcon className="size-3.5 shrink-0 text-brand" />
-              </>
-            )}
             {session ? (
               <>
                 <button

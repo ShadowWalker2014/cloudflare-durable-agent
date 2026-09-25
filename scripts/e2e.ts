@@ -276,24 +276,27 @@ await check("Stop mid-stream", async () => {
   return `stopped at ${len} chars`;
 });
 
-await check("Branch a conversation", async () => {
+await check("Fork a chat", async () => {
   const parentTitle = await page.getByTestId("thread-title").innerText();
   const firstAssistant = page.getByTestId("message-assistant").first();
   await firstAssistant.hover();
   const before = page.url();
   await firstAssistant.getByTestId("branch").click();
   await page.waitForFunction((u) => location.href !== u, before, { timeout: 30_000 });
-  await page.getByTestId("thread-title").filter({ hasText: "(branch)" }).waitFor();
+  await page.getByTestId("thread-title").filter({ hasText: "(Forked)" }).waitFor();
   const count = await page
     .waitForFunction(() => document.querySelectorAll("[data-testid^=message-]").length === 2, null, { timeout: 15_000 })
     .then(() => 2)
     .catch(() => page.locator("[data-testid^=message-]").count());
-  assert(count === 2, `branch has ${count} messages, expected 2`);
-  assert(await page.getByText(parentTitle).first().isVisible(), "breadcrumb does not link the parent");
+  assert(count === 2, `fork has ${count} messages, expected 2`);
+  const top = page.getByTestId("thread-item").first();
+  const topTitle = (await top.innerText()).replace(/\s+/g, " ").trim();
+  assert(topTitle === `${parentTitle.replace(/ \(Forked\)$/, "")} (Forked)`, `fork is not the newest chat: ${topTitle}`);
+  assert((await top.getAttribute("data-active")) === "true", "fork is not selected");
   await send("Give the story a one-line happy ending.");
   await waitIdle();
   await shot("10-branch");
-  return "new thread with 2 copied messages, continues independently";
+  return ""(Forked)" chat with 2 copied messages, continues independently";
 });
 
 await check("Model picker", async () => {
